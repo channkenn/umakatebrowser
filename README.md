@@ -16,10 +16,14 @@ Chrome 系
 
 - **Google Chrome** (動作確認済み・推奨)
 - **Brave** (動作確認済み)
+  Firefox (動作見込み ※設定によりポップアップ許可が必要)
 
-Firefox (動作見込み ※設定によりポップアップ許可が必要)
+## 📱 モバイル環境での動作実績
 
-※スマートフォン（Safari/Chrome 等）での動作は保証していません。
+- **Android (Kiwi Browser + Tampermonkey)** (動作確認済み)
+- **Android (Firefox + Tampermonkey)** (動作見込み ※設定によりポップアップ許可が必要)
+  - ※画面サイズによっては UI が重なる場合がありますが、基本機能（保存・非表示）は動作します。
+    ※スマートフォン（Safari/Chrome 等）での動作は保証していません。
 
 ## 🚀 インストール手順
 
