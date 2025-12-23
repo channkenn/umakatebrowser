@@ -433,16 +433,22 @@
     try {
       await initDB();
       // init関数内の該当箇所を以下のように修正
+      // init関数内の判定部分
       const tid = location.pathname.match(/board\/(\d+)/)?.[1];
       if (tid) {
-        // ページが404エラーを表示している場合のみ自動でログを開く
-        const isNotFound =
+        // 404だけでなく、サーバーエラー(500系)やタイトルが取得できない場合をカバー
+        const isErrorPage =
           document.title.includes("404") ||
-          document.body.innerText.includes("見つかりませんでした");
+          document.title.includes("500") ||
+          document.title.includes("502") ||
+          document.title.includes("Error") ||
+          document.body.innerText.includes("見つかりませんでした") ||
+          document.body.innerText.includes("Internal Server Error");
 
-        if (isNotFound) {
+        if (isErrorPage) {
           const saved = await dbOp.getOne(FAVORITE_STORE, tid);
           if (saved?.htmlLog) {
+            // ログが見つかれば自動で開く
             viewOfflineLog(saved.htmlLog, saved.title);
           }
         }
