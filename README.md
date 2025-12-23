@@ -12,9 +12,12 @@
 
 ## 🌐 対応ブラウザ
 
-- **Brave** (動作確認済み・推奨)
-- **Google Chrome** (動作見込み)
-- **Firefox** (動作見込み ※設定によりポップアップ許可が必要)
+Chrome 系
+
+- **Google Chrome** (動作確認済み・推奨)
+- **Brave** (動作確認済み)
+
+Firefox (動作見込み ※設定によりポップアップ許可が必要)
 
 ※スマートフォン（Safari/Chrome 等）での動作は保証していません。
 
@@ -27,7 +30,13 @@ Brave ブラウザと拡張機能「Tampermonkey」を使用して導入しま�
 ブラウザにユーザースクリプトを実行するための環境を導入します。
 
 - [Tampermonkey (Chrome ウェブストア)](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)
-  - 「Brave に追加」をクリックしてインストールしてください。
+
+  - 「Chrome に追加」をクリックしてインストールしてください。
+
+- **【重要】ブラウザの開発者モードを有効にする**
+  - ブラウザの拡張機能管理画面（ `chrome://extensions/` ）を開きます。
+  - 右上の **「デベロッパー モード（開発者モード）」** をオンにします。
+  - ※これをオンにしないと、スクリプトが正しく読み込まれない場合があります。
 
 ### 2. スクリプトのインストール
 

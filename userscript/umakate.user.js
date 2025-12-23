@@ -432,14 +432,20 @@
   async function init() {
     try {
       await initDB();
+      // init関数内の該当箇所を以下のように修正
       const tid = location.pathname.match(/board\/(\d+)/)?.[1];
-      if (
-        tid &&
-        (document.title.includes("404") ||
-          !document.querySelector(".thread-title"))
-      ) {
-        const saved = await dbOp.getOne(FAVORITE_STORE, tid);
-        if (saved?.htmlLog) viewOfflineLog(saved.htmlLog, saved.title);
+      if (tid) {
+        // ページが404エラーを表示している場合のみ自動でログを開く
+        const isNotFound =
+          document.title.includes("404") ||
+          document.body.innerText.includes("見つかりませんでした");
+
+        if (isNotFound) {
+          const saved = await dbOp.getOne(FAVORITE_STORE, tid);
+          if (saved?.htmlLog) {
+            viewOfflineLog(saved.htmlLog, saved.title);
+          }
+        }
       }
       await renderPanels();
       setInterval(() => {
