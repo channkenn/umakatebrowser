@@ -43,7 +43,6 @@ Chrome ブラウザと拡張機能「Tampermonkey」を使用して導入しま�
 以下のリンクをクリックすると、Tampermonkey のインストール画面が自動的に立ち上がります。
 
 - 👉 [umakate.user.js をインストール](https://github.com/channkenn/umakatebrowser/raw/main/userscript/umakate.user.js)
-- 👉 [umakate-kakolog.user.js をインストール](https://github.com/channkenn/umakatebrowser/raw/main/userscript/umakate-kakolog.user.js)
 
 ### 3. 使いかた
 
