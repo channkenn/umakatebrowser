@@ -57,7 +57,7 @@
   function cleanTitle(text) {
     return text
       .split("\n")[0]
-      .replace(/☆ お気に入り|★ お気に入り中|非表示にして戻る/g, "")
+      .replace(/☆ お気に入り|★ お気に入り中|🚫 非表示にして戻る/g, "")
       .trim();
   }
 
@@ -266,7 +266,7 @@
       card.style.position = "relative";
       const hBtn = document.createElement("button");
       hBtn.className = "custom-btn";
-      hBtn.textContent = "非";
+      hBtn.textContent = "🚫";
       hBtn.style.cssText =
         "position:absolute; top:4px; left:4px; font-size:0.7em; z-index:10; cursor:pointer;";
       hBtn.onclick = async (e) => {
@@ -328,7 +328,7 @@
         location.reload();
       };
       const dhBtn = document.createElement("button");
-      dhBtn.textContent = "非表示にして戻る";
+      dhBtn.textContent = "🚫 非表示にして戻る";
       dhBtn.onclick = async () => {
         if (confirm("非表示にして戻りますか？")) {
           await dbOp.put(HIDDEN_STORE, {
