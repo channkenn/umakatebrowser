@@ -1,37 +1,24 @@
-# umakatebrowser
+## 🚀 インストール手順
 
-あにまん掲示板をより快適に閲覧するためのユーザースクリプト集です。
-スレッドの非表示機能やお気に入り、画像付きの過去ログ保存機能を提供します。
+Brave ブラウザと拡張機能「Tampermonkey」を使用して導入します。
 
-## 🛠 主な機能
+### 1. Tampermonkey をインストール
 
-- **非表示機能**: 興味のないスレッドを一覧から非表示にします。
-- **お気に入り管理**: 右下のパネルでスレッドをクイック管理。
-- **過去ログ保存**: お気に入りに入れたスレッドの内容（画像リンク付き）をブラウザ内に保存し、スレ落ち後も閲覧可能にします。
-- **直リンクコピー**: ログ画面からパス（src/arc 等）を除外した画像 URL をワンクリックでコピー。
+ブラウザにユーザースクリプトを実行するための環境を導入します。
 
-## 🚀 導入手順
-
-### 1. 拡張機能のインストール
-
-このスクリプトを動かすには、ブラウザ拡張機能の **Tampermonkey** が必要です。
-
-- [Tampermonkey (Brave/Chrome ストア)](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)
+- [Tampermonkey (Chrome ウェブストア)](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)
+  - 「Brave に追加」をクリックしてインストールしてください。
 
 ### 2. スクリプトのインストール
 
-以下のリンクからスクリプトをインストールしてください。
-(※GitHub にアップロード後、`raw` リンクに書き換えると便利です)
+以下のリンクをクリックすると、Tampermonkey のインストール画面が自動的に立ち上がります。
 
-- [umakate.user.js をインストール](userscript/umakate.user.js?raw=1)
+- 👉 [umakate.user.js をインストール](https://github.com/channkenn/umakatebrowser/raw/main/userscript/umakate.user.js)
+- 👉 [umakate-kakolog.user.js をインストール](https://github.com/channkenn/umakatebrowser/raw/main/userscript/umakate-kakolog.user.js)
 
-### 3. Brave での設定 (推奨)
+### 3. 使いかた
 
-Brave の「設定」>「シールド」にて、広告ブロックが強すぎると動作に影響が出る場合があります。
-標準設定（Standard）での使用を推奨します。
-
-## 📁 ディレクトリ構造
-
-- `userscript/`: 実際にブラウザで動作するスクリプト本体
-- `tools/`: 開発・デバッグ用の補助ツール
-- `docs/`: 設計メモや仕様書
+1. インストール完了後、[あにまん掲示板](https://bbs.animanch.com/) を開きます。
+2. 画面の右下にオレンジ色の管理パネルが表示されます。
+3. スレッド一覧や詳細画面に表示される「☆（お気に入り）」や「非（非表示）」ボタンでスレッドを管理できます。
+4. お気に入りに入れたスレッドは、パネル内の「📖 [保存ログを表示]」からいつでも画像付きで読み返すことが可能です。
