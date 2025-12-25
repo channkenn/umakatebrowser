@@ -1,6 +1,11 @@
 // ==UserScript==
 // @name         あにまん掲示板 快適化ツール (URLコピー機能付き)
+// @version      1.1
+// @description  お気に入り・非表示・過去ログ保存・画像URLコピー機能
+// @author       channkenn
 // @match        https://bbs.animanch.com/*
+// @updateURL    https://github.com/channkenn/umakatebrowser/raw/main/userscript/umakate.user.js
+// @downloadURL  https://github.com/channkenn/umakatebrowser/raw/main/userscript/umakate.user.js
 // @run-at       document-end
 // @grant        none
 // ==/UserScript==
@@ -12,6 +17,7 @@
   const HIDDEN_STORE = "hiddenThreads";
   const FAVORITE_STORE = "favoriteThreads";
   let db;
+  let lastSaveTime = 0;
 
   function initDB() {
     return new Promise((resolve, reject) => {
@@ -62,9 +68,12 @@
   }
 
   // ====================
-  // ログ保存（特定のリンクプレビューを簡略化）
+  // ログ保存
   // ====================
   async function saveThreadLog(threadId) {
+    const now = Date.now();
+    if (now - lastSaveTime < 10000) return;
+
     const threadArea =
       document.querySelector("#res-list") ||
       document.querySelector(".thread") ||
@@ -73,19 +82,15 @@
 
     const clone = threadArea.cloneNode(true);
 
-    // 1. 指定された形式のリンクプレビューを簡略化
-    // col-8 col-md-10 というクラスを持つ要素内の strong 以外を削除
     clone
       .querySelectorAll(".col-8.col-md-10.position-relative")
       .forEach((container) => {
         const strongTag = container.querySelector("strong");
         if (strongTag) {
-          // strongの中身だけ残して、コンテナをそれだけに書き換える
           container.innerHTML = "<strong>" + strongTag.innerHTML + "</strong>";
         }
       });
 
-    // 2. 画像の処理（前回までの仕様を維持）
     clone.querySelectorAll("img").forEach((img) => {
       const src = img.src || img.dataset.src || "";
       img.src = src;
@@ -104,16 +109,14 @@
         threadData.htmlLog = newHtml;
         threadData.lastUpdate = new Date().toLocaleString("ja-JP");
         await dbOp.put(FAVORITE_STORE, threadData);
+        lastSaveTime = now;
         renderPanels();
       }
     }
   }
 
   // ====================
-  // ログ閲覧画面（厳格なURL変換＆メッセージ通知版）
-  // ====================
-  // ====================
-  // ログ閲覧画面（外枠フィット版）
+  // ログ閲覧画面
   // ====================
   function viewOfflineLog(html, title) {
     const logWindow = window.open("", "_blank");
@@ -130,41 +133,9 @@
           body{max-width:850px;margin:auto;padding:20px;background:#f0f2f5;font-family:sans-serif;line-height:1.6;}
           .header{background:#444;color:#fff;padding:15px;position:sticky;top:0;border-radius:0 0 8px 8px;font-weight:bold;z-index:100;}
           .content{background:#fff;padding:20px;margin-top:15px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}
-          
-          /* 画像の幅に枠をフィットさせる設定 */
-          .img-wrapper { 
-            margin: 15px 0; 
-            border: 1px solid #ddd; 
-            padding: 10px; 
-            border-radius: 5px; 
-            background: #fff; 
-            display: table;    /* これで中身の幅に縮小します */
-            word-break: break-all;
-          }
-          
-          img { 
-            max-width: 100%; 
-            height: auto; 
-            border-radius: 4px; 
-            display: block; 
-            margin-bottom: 8px; 
-          }
-          
-          .copy-btn { 
-            display: block;
-            width: 100%;      /* 画像の幅いっぱいのボタンにする */
-            box-sizing: border-box;
-            font-size: 12px; 
-            padding: 8px; 
-            cursor: pointer; 
-            background: #6c757d; 
-            border: none; 
-            border-radius: 4px; 
-            color: #fff; 
-            font-weight: bold; 
-            transition: 0.2s;
-            text-align: center;
-          }
+          .img-wrapper { margin: 15px 0; border: 1px solid #ddd; padding: 10px; border-radius: 5px; background: #fff; display: table; word-break: break-all;}
+          img { max-width: 100%; height: auto; border-radius: 4px; display: block; margin-bottom: 8px; }
+          .copy-btn { display: block; width: 100%; box-sizing: border-box; font-size: 12px; padding: 8px; cursor: pointer; background: #6c757d; border: none; border-radius: 4px; color: #fff; font-weight: bold; transition: 0.2s; text-align: center;}
           .copy-btn:hover { background: #5a6268; }
           .copy-btn.success { background: #28a745 !important; }
           .copy-btn.error { background: #dc3545 !important; }
@@ -173,82 +144,56 @@
       <body>
         <div class="header">【保存ログ】 ${title}</div>
         <div id="main-content" class="content">${html}</div>
-
         <script>
           document.querySelectorAll('img').forEach(img => {
             const parentLink = img.closest('a');
-            if (parentLink) {
-              parentLink.onclick = (e) => e.preventDefault();
-            }
-
+            if (parentLink) { parentLink.onclick = (e) => e.preventDefault(); }
             const wrapper = document.createElement('div');
             wrapper.className = 'img-wrapper';
             img.parentNode.replaceChild(wrapper, img);
             wrapper.appendChild(img);
-
             const btn = document.createElement('button');
             btn.className = 'copy-btn';
             btn.textContent = '画像URLをコピー';
-            
             btn.onclick = (e) => {
               e.preventDefault();
-              e.stopPropagation();
-
               const rawUrl = img.src;
-              
-              // ドメインチェック
-              if (!rawUrl.includes('bbs.animanch.com')) {
-                showStatus(btn, '外部リンクは対象外です', 'error');
-                return;
-              }
-
-              // 正規パスチェック
-              const validPathMatch = rawUrl.match(/\\/(img|thumb|thumb_m|thumb_l|arc|src)\\//);
-              if (!validPathMatch) {
-                showStatus(btn, '対象外のURL形式です', 'error');
-                return;
-              }
-
-              // URL再構築
+              if (!rawUrl.includes('bbs.animanch.com')) { showStatus(btn, '外部リンクは対象外です', 'error'); return; }
               const parts = rawUrl.split('animanch.com/')[1].split('/');
               parts.shift(); 
-              const imagePath = parts.join('/').replace('src/', '').replace('arc/', '');
+              const imagePath = parts.join('/').replace('src/', '').replace('arc/', '').replace('thumb/', '').replace('thumb_m/', '').replace('thumb_l/', '');
               const finalUrl = 'https://bbs.animanch.com/img/' + imagePath;
-
-              // コピー実行
-              if (navigator.clipboard) {
-                navigator.clipboard.writeText(finalUrl).then(() => showStatus(btn, 'コピー完了！', 'success'));
-              } else {
+              navigator.clipboard.writeText(finalUrl).then(() => showStatus(btn, 'コピー完了！', 'success'))
+              .catch(() => {
                 const t = document.createElement("textarea");
                 t.value = finalUrl; document.body.appendChild(t);
                 t.select(); document.execCommand("copy");
                 document.body.removeChild(t);
                 showStatus(btn, 'コピー完了！', 'success');
-              }
+              });
             };
             wrapper.appendChild(btn);
           });
-
           function showStatus(btn, message, type) {
-            const originalText = '直リンクをコピー';
+            const originalText = '画像URLをコピー';
             btn.textContent = message;
             btn.classList.add(type);
-            setTimeout(() => {
-              btn.textContent = originalText;
-              btn.classList.remove(type);
-            }, 2000);
+            setTimeout(() => { btn.textContent = originalText; btn.classList.remove(type); }, 2000);
           }
-        </script>
+        <\/script>
       </body>
       </html>
     `);
     logWindow.document.close();
   }
 
-  // --- 以下、以前のUI・管理パネル・初期化処理 ---
-
+  // ====================
+  // UI処理 (高速化版)
+  // ====================
   async function processUI() {
     if (!db) return;
+
+    // DBから最新のリストを取得
     const [hiddenList, favList] = await Promise.all([
       dbOp.getAll(HIDDEN_STORE),
       dbOp.getAll(FAVORITE_STORE),
@@ -258,38 +203,64 @@
 
     document.querySelectorAll('a.card[href*="/board/"]').forEach((card) => {
       const id = card.href.match(/board\/(\d+)/)?.[1];
-      if (!id || card.querySelector(".custom-btn")) return;
+      if (!id) return;
+
+      // すでに非表示リストにある場合は即消す
       if (hMap.has(id)) {
-        card.style.display = "none";
+        if (card.style.display !== "none") card.style.display = "none";
+        return;
+      } else {
+        // 戻された場合に表示を復活させる
+        if (card.style.display === "none") card.style.display = "";
+      }
+
+      // すでにボタンがある場合は、お気に入り状態の更新だけしてスキップ
+      const existingBtns = card.querySelectorAll(".custom-btn");
+      if (existingBtns.length > 0) {
+        if (existingBtns[1]) {
+          const targetChar = fMap.has(id) ? "★" : "☆";
+          if (existingBtns[1].textContent !== targetChar) {
+            existingBtns[1].textContent = targetChar;
+          }
+        }
         return;
       }
+
+      // 新規ボタン設置
       card.style.position = "relative";
+
       const hBtn = document.createElement("button");
       hBtn.className = "custom-btn";
       hBtn.textContent = "🚫";
       hBtn.style.cssText =
-        "position:absolute; top:4px; left:4px; font-size:0.7em; z-index:10; cursor:pointer;";
+        "position:absolute; top:4px; left:4px; font-size:0.7em; z-index:10; cursor:pointer; background:rgba(255,255,255,0.8); border:1px solid #ccc; border-radius:3px;";
+
       hBtn.onclick = async (e) => {
         e.preventDefault();
         e.stopPropagation();
+        // ★【高速化】DB保存を待たずにその場で消す
+        card.style.display = "none";
         await dbOp.put(HIDDEN_STORE, {
           id,
           title: cleanTitle(card.innerText),
           url: card.href,
         });
-        card.style.display = "none";
         renderPanels();
       };
+
       const fBtn = document.createElement("button");
       fBtn.className = "custom-btn";
       fBtn.textContent = fMap.has(id) ? "★" : "☆";
-      fBtn.style.cssText = `position:absolute; top:4px; left:30px; font-size:0.7em; color:orange; z-index:10; cursor:pointer;`;
+      fBtn.style.cssText = `position:absolute; top:4px; left:30px; font-size:0.7em; color:orange; z-index:10; cursor:pointer; background:rgba(255,255,255,0.8); border:1px solid #ccc; border-radius:3px;`;
+
       fBtn.onclick = async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (fMap.has(id)) {
+        const isCurrentlyFav = fMap.has(id);
+        // ★【高速化】表示を即座に切り替える
+        fBtn.textContent = isCurrentlyFav ? "☆" : "★";
+        if (isCurrentlyFav) {
           await dbOp.del(FAVORITE_STORE, id);
-          fBtn.textContent = "☆";
         } else {
           await dbOp.put(FAVORITE_STORE, {
             id,
@@ -299,6 +270,7 @@
         }
         renderPanels();
       };
+
       card.appendChild(hBtn);
       card.appendChild(fBtn);
     });
@@ -381,6 +353,7 @@
       dbOp.getAll(HIDDEN_STORE),
       dbOp.getAll(FAVORITE_STORE),
     ]);
+
     hideBox.innerHTML = hides.length
       ? ""
       : '<div style="padding:10px;color:#999">なし</div>';
@@ -396,6 +369,7 @@
       };
       hideBox.appendChild(r);
     });
+
     favBox.innerHTML = favs.length
       ? ""
       : '<div style="padding:10px;color:#999">なし</div>';
@@ -432,25 +406,15 @@
   async function init() {
     try {
       await initDB();
-      // init関数内の該当箇所を以下のように修正
-      // init関数内の判定部分
       const tid = location.pathname.match(/board\/(\d+)/)?.[1];
       if (tid) {
-        // 404だけでなく、サーバーエラー(500系)やタイトルが取得できない場合をカバー
         const isErrorPage =
           document.title.includes("404") ||
           document.title.includes("500") ||
-          document.title.includes("502") ||
-          document.title.includes("Error") ||
-          document.body.innerText.includes("見つかりませんでした") ||
-          document.body.innerText.includes("Internal Server Error");
-
+          document.body.innerText.includes("見つかりませんでした");
         if (isErrorPage) {
           const saved = await dbOp.getOne(FAVORITE_STORE, tid);
-          if (saved?.htmlLog) {
-            // ログが見つかれば自動で開く
-            viewOfflineLog(saved.htmlLog, saved.title);
-          }
+          if (saved?.htmlLog) viewOfflineLog(saved.htmlLog, saved.title);
         }
       }
       await renderPanels();
