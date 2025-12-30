@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         あにまん掲示板 快適化ツール (URLコピー機能付き)
-// @version      1.4
+// @version      1.4.1
 // @description  お気に入り・非表示・過去ログ保存・画像URLコピー・レス単位非表示
 // @author       channkenn
 // @match        https://bbs.animanch.com/*
@@ -301,62 +301,71 @@
   // ====================
   async function saveThreadLog(threadId) {
     const now = Date.now();
-    // 頻繁な保存を避ける（10秒間隔）
     if (now - lastSaveTime < 10000) return;
 
-    // レス一覧のコンテナを取得
-    const resListElement = document.querySelector("#res-list");
+    // レス一覧の取得（あにまんの構造に合わせる）
+    const resListElement =
+      document.querySelector("#res-list") ||
+      document.querySelector(".thread") ||
+      document.querySelector("article");
     if (!resListElement) return;
 
     const threadData = await dbOp.getOne(FAVORITE_STORE, threadId);
     if (!threadData) return;
 
-    // 一時的なコンテナを作成して現在のログをパース
+    // 新しく保存するためのテンポラリ要素
     const tempContainer = document.createElement("div");
-    tempContainer.innerHTML = threadData.htmlLog || "";
+
+    // 既存のログがあれば読み込む
+    if (threadData.htmlLog) {
+      tempContainer.innerHTML = threadData.htmlLog;
+    }
 
     let isUpdated = false;
+    const currentResList =
+      resListElement.querySelectorAll("li.list-group-item");
 
-    // 現在の画面上の各レスをループ
-    resListElement.querySelectorAll("li.list-group-item").forEach((res) => {
-      const resNum = res.querySelector(".resnumber")?.innerText;
-      if (!resNum) return;
+    currentResList.forEach((res) => {
+      const resNumEl = res.querySelector(".resnumber");
+      if (!resNumEl) return;
+      const resNum = resNumEl.innerText.trim();
 
-      // 削除されたレス、または自分が非表示にしたレスは保存対象から除外（既存のログを優先）
+      // 【ガード】削除済みレスで上書きしない
       if (
         res.classList.contains("res-missing") ||
-        res.querySelector(".resbody")?.style.display === "none"
+        res.innerText.includes("削除されました")
       ) {
         return;
       }
 
-      // 既存ログにこのレス番号があるか確認
-      const existingRes =
-        tempContainer.querySelector(
-          `li.list-group-item:has(.resnumber:contains("${resNum}"))`
-        ) ||
-        [...tempContainer.querySelectorAll("li.list-group-item")].find(
-          (el) => el.querySelector(".resnumber")?.innerText === resNum
-        );
+      // 【判定】既存ログ内にこのレス番号があるか探す
+      // ログの形式が変わっていても見つけられるよう、innerTextの完全一致で判定
+      const alreadyExists = Array.from(
+        tempContainer.querySelectorAll(".resnumber")
+      ).some((el) => el.innerText.trim() === resNum);
 
-      if (!existingRes) {
-        // 新しいレスが見つかった場合のみクローンして追加
+      if (!alreadyExists) {
         const clone = res.cloneNode(true);
 
-        // 不要なツールUIを削除
+        // ツールUIの除去
         clone
           .querySelectorAll(
             ".res-hide-btn, .res-show-btn, .custom-detail-group"
           )
           .forEach((el) => el.remove());
 
-        // 画像URLの固定化
+        // 画像処理
         clone.querySelectorAll("img").forEach((img) => {
           const src = img.src || img.dataset.src || "";
-          img.src = src;
-          img.style.maxWidth = "100%";
-          img.removeAttribute("loading");
-          img.removeAttribute("data-src");
+          if (src) {
+            img.src = src;
+            img.style.maxWidth = "100%";
+            img.style.height = "auto";
+            img.style.display = "block";
+            img.style.margin = "10px 0 8px 0";
+            img.removeAttribute("loading");
+            img.removeAttribute("data-src");
+          }
         });
 
         tempContainer.appendChild(clone);
@@ -365,6 +374,7 @@
     });
 
     if (isUpdated) {
+      // ログ全体をDBに書き戻す
       threadData.htmlLog = tempContainer.innerHTML;
       threadData.lastUpdate = new Date().toLocaleString("ja-JP");
       await dbOp.put(FAVORITE_STORE, threadData);
