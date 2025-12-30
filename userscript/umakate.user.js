@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         あにまん掲示板 快適化ツール (URLコピー機能付き)
-// @version      1.3
+// @version      1.4
 // @description  お気に入り・非表示・過去ログ保存・画像URLコピー・レス単位非表示
 // @author       channkenn
 // @match        https://bbs.animanch.com/*
@@ -297,51 +297,81 @@
     }
   }
   // ====================
-  // ログ保存
+  // ログ保存（追記・保護ロジック付き）
   // ====================
   async function saveThreadLog(threadId) {
     const now = Date.now();
+    // 頻繁な保存を避ける（10秒間隔）
     if (now - lastSaveTime < 10000) return;
-    const threadArea =
-      document.querySelector("#res-list") ||
-      document.querySelector(".thread") ||
-      document.querySelector("article");
-    if (!threadArea) return;
-    const clone = threadArea.cloneNode(true);
-    // ツール独自のUIはログから削除
-    clone
-      .querySelectorAll(".res-hide-btn, .res-show-btn, .custom-detail-group")
-      .forEach((el) => el.remove());
-    clone
-      .querySelectorAll(".col-8.col-md-10.position-relative")
-      .forEach((container) => {
-        const strongTag = container.querySelector("strong");
-        if (strongTag)
-          container.innerHTML = "<strong>" + strongTag.innerHTML + "</strong>";
-      });
-    clone.querySelectorAll("img").forEach((img) => {
-      const src = img.src || img.dataset.src || "";
-      img.src = src;
-      img.style.maxWidth = "100%";
-      img.style.height = "auto";
-      img.style.display = "block";
-      img.style.margin = "10px 0 8px 0";
-      img.removeAttribute("loading");
-      img.removeAttribute("data-src");
-    });
+
+    // レス一覧のコンテナを取得
+    const resListElement = document.querySelector("#res-list");
+    if (!resListElement) return;
+
     const threadData = await dbOp.getOne(FAVORITE_STORE, threadId);
-    if (threadData) {
-      const newHtml = clone.innerHTML;
-      if (threadData.htmlLog !== newHtml) {
-        threadData.htmlLog = newHtml;
-        threadData.lastUpdate = new Date().toLocaleString("ja-JP");
-        await dbOp.put(FAVORITE_STORE, threadData);
-        lastSaveTime = now;
-        renderPanels();
+    if (!threadData) return;
+
+    // 一時的なコンテナを作成して現在のログをパース
+    const tempContainer = document.createElement("div");
+    tempContainer.innerHTML = threadData.htmlLog || "";
+
+    let isUpdated = false;
+
+    // 現在の画面上の各レスをループ
+    resListElement.querySelectorAll("li.list-group-item").forEach((res) => {
+      const resNum = res.querySelector(".resnumber")?.innerText;
+      if (!resNum) return;
+
+      // 削除されたレス、または自分が非表示にしたレスは保存対象から除外（既存のログを優先）
+      if (
+        res.classList.contains("res-missing") ||
+        res.querySelector(".resbody")?.style.display === "none"
+      ) {
+        return;
       }
+
+      // 既存ログにこのレス番号があるか確認
+      const existingRes =
+        tempContainer.querySelector(
+          `li.list-group-item:has(.resnumber:contains("${resNum}"))`
+        ) ||
+        [...tempContainer.querySelectorAll("li.list-group-item")].find(
+          (el) => el.querySelector(".resnumber")?.innerText === resNum
+        );
+
+      if (!existingRes) {
+        // 新しいレスが見つかった場合のみクローンして追加
+        const clone = res.cloneNode(true);
+
+        // 不要なツールUIを削除
+        clone
+          .querySelectorAll(
+            ".res-hide-btn, .res-show-btn, .custom-detail-group"
+          )
+          .forEach((el) => el.remove());
+
+        // 画像URLの固定化
+        clone.querySelectorAll("img").forEach((img) => {
+          const src = img.src || img.dataset.src || "";
+          img.src = src;
+          img.style.maxWidth = "100%";
+          img.removeAttribute("loading");
+          img.removeAttribute("data-src");
+        });
+
+        tempContainer.appendChild(clone);
+        isUpdated = true;
+      }
+    });
+
+    if (isUpdated) {
+      threadData.htmlLog = tempContainer.innerHTML;
+      threadData.lastUpdate = new Date().toLocaleString("ja-JP");
+      await dbOp.put(FAVORITE_STORE, threadData);
+      lastSaveTime = now;
+      renderPanels();
     }
   }
-
   // ====================
   // ログ閲覧画面
   // ====================
